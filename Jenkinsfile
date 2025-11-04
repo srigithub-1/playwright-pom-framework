@@ -3,10 +3,21 @@ pipeline {
 
     environment {
         NODE_HOME = "C:\\Program Files\\nodejs"
-        PATH = "${NODE_HOME};${PATH}"
+        SYS_PATH  = "C:\\Windows\\System32"
+        PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
     }
 
     stages {
+
+        // 🧹 Clean before every build
+        stage('Clean Workspace') {
+            steps {
+                echo "🧹 Cleaning old reports and node_modules..."
+                bat 'if exist playwright-report rmdir /s /q playwright-report'
+                bat 'if exist test-results rmdir /s /q test-results'
+                bat 'if exist node_modules rmdir /s /q node_modules'
+            }
+        }
 
         stage('Checkout') {
             steps {
@@ -15,18 +26,10 @@ pipeline {
             }
         }
 
-        stage('Check CMD') {
-            steps {
-                echo "🔍 Verifying CMD and PATH configuration..."
-                bat 'where cmd'
-                bat 'echo %PATH%'
-            }
-    }
-
         stage('Install Dependencies') {
             steps {
                 echo "📥 Installing npm packages..."
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" install'
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" install --no-fund --no-audit --loglevel=error'
             }
         }
 
@@ -57,11 +60,19 @@ pipeline {
                 ])
             }
         }
+
+        // 🗂️ Archive logs, screenshots, traces
+        stage('Archive Artifacts') {
+            steps {
+                echo "📦 Archiving test results and screenshots..."
+                archiveArtifacts artifacts: 'test-results/**, screenshots/**, playwright-report/**', allowEmptyArchive: true
+            }
+        }
     }
 
     post {
         always {
-            echo "✅ Pipeline finished (success or failure). Cleaning up..."
+            echo "✅ Pipeline finished (success or failure)."
         }
         success {
             echo "🎉 Playwright Tests Passed!"
