@@ -15,6 +15,14 @@ pipeline {
             }
         }
 
+        stage('Check CMD') {
+            steps {
+                echo "🔍 Verifying CMD and PATH configuration..."
+                bat 'where cmd'
+                bat 'echo %PATH%'
+            }
+    }
+
         stage('Install Dependencies') {
             steps {
                 echo "📥 Installing npm packages..."
