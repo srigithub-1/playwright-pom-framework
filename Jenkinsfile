@@ -5,15 +5,16 @@ pipeline {
         NODE_HOME = "C:\\Program Files\\nodejs"
         SYS_PATH  = "C:\\Windows\\System32"
         PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
+        REPORT_DATE = powershell(script: '(Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")', returnStdout: true).trim()
     }
 
     stages {
 
-        // 🧹 Clean before every build
+        // 🧹 Clean old files before new build
         stage('Clean Workspace') {
             steps {
                 echo "🧹 Cleaning old reports and node_modules..."
-                bat 'if exist playwright-report rmdir /s /q playwright-report'
+                bat 'if exist playwright-report* rmdir /s /q playwright-report*'
                 bat 'if exist test-results rmdir /s /q test-results'
                 bat 'if exist node_modules rmdir /s /q node_modules'
             }
@@ -43,7 +44,7 @@ pipeline {
         stage('Run Playwright Tests') {
             steps {
                 echo "🚀 Running Playwright tests..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html'
+                bat "\"C:\\Program Files\\nodejs\\npx.cmd\" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%"
             }
         }
 
@@ -51,9 +52,9 @@ pipeline {
             steps {
                 echo "📊 Publishing Playwright HTML report..."
                 publishHTML(target: [
-                    reportDir: 'playwright-report',
+                    reportDir: "playwright-report-${env.REPORT_DATE}",
                     reportFiles: 'index.html',
-                    reportName: 'Playwright Report',
+                    reportName: "Playwright Report - ${env.REPORT_DATE}",
                     keepAll: true,
                     alwaysLinkToLastBuild: true,
                     allowMissing: false
@@ -61,11 +62,10 @@ pipeline {
             }
         }
 
-        // 🗂️ Archive logs, screenshots, traces
         stage('Archive Artifacts') {
             steps {
                 echo "📦 Archiving test results and screenshots..."
-                archiveArtifacts artifacts: 'test-results/**, screenshots/**, playwright-report/**', allowEmptyArchive: true
+                archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}/**, test-results/**, screenshots/**", allowEmptyArchive: true
             }
         }
     }
