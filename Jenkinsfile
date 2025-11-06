@@ -11,15 +11,18 @@ pipeline {
     stages {
 
         // 🧹 Clean old files before new build
-        stage('Clean Workspace') {
-            steps {
-                echo "🧹 Cleaning old reports and node_modules..."
-                // Remove all playwright-report folders safely
-                bat 'for /d %G in (playwright-report*) do rmdir /s /q "%G"'
-                bat 'if exist test-results rmdir /s /q test-results'
-                bat 'if exist node_modules rmdir /s /q node_modules'
-            }
-        }
+       stage('Clean Workspace') {
+    steps {
+        echo "🧹 Cleaning old reports and node_modules..."
+
+        // ✅ Corrected loop: use %%G inside Jenkinsfile bat blocks
+        bat 'for /d %%G in (playwright-report*) do rmdir /s /q "%%G"'
+
+        bat 'if exist test-results rmdir /s /q test-results'
+        bat 'if exist node_modules rmdir /s /q node_modules'
+    }
+}
+
 
         stage('Checkout') {
             steps {
