@@ -66,6 +66,13 @@ pipeline {
             }
         }
 
+        stage('Check Allure CLI') {
+    steps {
+        bat 'where allure'
+        bat 'allure --version'
+    }
+}
+
         stage('Publish Allure Report') {
     steps {
         echo "📊 Generating and Publishing Allure Report..."
