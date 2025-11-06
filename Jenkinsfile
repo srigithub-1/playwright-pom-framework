@@ -14,7 +14,8 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 echo "🧹 Cleaning old reports and node_modules..."
-                bat 'if exist playwright-report* rmdir /s /q playwright-report*'
+                // Remove all playwright-report folders safely
+                bat 'for /d %G in (playwright-report*) do rmdir /s /q "%G"'
                 bat 'if exist test-results rmdir /s /q test-results'
                 bat 'if exist node_modules rmdir /s /q node_modules'
             }
