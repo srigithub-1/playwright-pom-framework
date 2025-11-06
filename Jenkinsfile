@@ -62,12 +62,27 @@ pipeline {
             }
         }
 
+        stage('Publish Allure Report') {
+    steps {
+        echo "📊 Generating and Publishing Allure Report..."
+        bat '"C:\\Program Files\\nodejs\\npx.cmd" allure generate allure-results --clean -o allure-report'
+        allure([
+            includeProperties: false,
+            jdk: '',
+            results: [[path: 'allure-results']],
+            reportBuildPolicy: 'ALWAYS'
+        ])
+    }
+}
+
         stage('Archive Artifacts') {
             steps {
                 echo "📦 Archiving test results and screenshots..."
                 archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}/**, test-results/**, screenshots/**", allowEmptyArchive: true
             }
         }
+
+        
     }
 
     post {
