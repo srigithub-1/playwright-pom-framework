@@ -75,23 +75,25 @@ pipeline {
         }
 
         stage('Publish Allure Report') {
-            steps {
-                script {
-                    echo "📊 Generating and Publishing Allure Report..."
-                    if (fileExists('allure-results')) {
-                        allure([
-                            commandline: 'allure',   // 👈 must match name in Manage Jenkins → Tools
-                            includeProperties: false,
-                            jdk: '',
-                            results: [[path: 'allure-results']],
-                            reportBuildPolicy: 'ALWAYS'
-                        ])
-                    } else {
-                        echo "⚠️ No allure-results found — skipping report publish."
-                    }
+    steps {
+        script {
+            echo "📊 Generating and Publishing Allure Report..."
+            if (fileExists('allure-results')) {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    allure([
+                        commandline: 'allure',
+                        includeProperties: false,
+                        jdk: '',
+                        results: [[path: 'allure-results']],
+                        reportBuildPolicy: 'ALWAYS'
+                    ])
                 }
+            } else {
+                echo "⚠️ No allure-results found — skipping report publish."
             }
         }
+    }
+}
 
         stage('Archive Artifacts') {
             steps {
