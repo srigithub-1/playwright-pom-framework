@@ -75,14 +75,20 @@ pipeline {
 
         stage('Publish Allure Report') {
     steps {
-        echo "📊 Generating and Publishing Allure Report..."
-        bat '"C:\\Program Files\\nodejs\\npx.cmd" allure generate allure-results --clean -o allure-report'
-        allure([
-            includeProperties: false,
-            jdk: '',
-            results: [[path: 'allure-results']],
-            reportBuildPolicy: 'ALWAYS'
-        ])
+        script {
+            echo "📊 Generating and Publishing Allure Report..."
+            if (fileExists('allure-results')) {
+                allure([
+                    commandline: 'allure',   // 👈 must match the Tool name
+                    includeProperties: false,
+                    jdk: '',
+                    results: [[path: 'allure-results']],
+                    reportBuildPolicy: 'ALWAYS'
+                ])
+            } else {
+                echo "⚠️ No allure-results found — skipping report publish."
+            }
+        }
     }
 }
 
