@@ -61,17 +61,28 @@ pipeline {
         }
 
         
-        stage('Publish HTML Report') {
+        stage('Publish Playwright HTML Report') {
     steps {
-        echo "📊 Publishing Playwright HTML report..."
-        publishHTML(target: [
-            reportDir: "playwright-report",
-            reportFiles: 'index.html',
-            reportName: "Playwright Test Report",
-            keepAll: true,
-            alwaysLinkToLastBuild: true,
-            allowMissing: false
-        ])
+        script {
+            echo "📊 Searching for latest Playwright HTML report folder..."
+
+            // 🧠 Find the most recent report folder (e.g., playwright-report-2025-11-08_15-28-19)
+            def reportFolder = bat(
+                script: 'for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report*\') do @echo %%i & exit /b',
+                returnStdout: true
+            ).trim()
+
+            echo "✅ Latest report folder detected: ${reportFolder}"
+
+            publishHTML(target: [
+                reportDir: reportFolder,
+                reportFiles: 'index.html',
+                reportName: "Playwright Test Report",
+                keepAll: true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: false
+            ])
+        }
     }
 }
 
