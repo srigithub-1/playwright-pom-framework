@@ -41,7 +41,8 @@ pipeline {
         stage('Install Playwright Browsers') {
             steps {
                 echo "🌐 Installing Playwright browsers..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%"'
+                bat 'dir allure-results' // 👈 This checks if the folder was created
             }
         }
 
