@@ -41,15 +41,15 @@ pipeline {
         stage('Install Playwright Browsers') {
             steps {
                 echo "🌐 Installing Playwright browsers..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%"'
-                bat 'dir allure-results' // 👈 This checks if the folder was created
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
             }
         }
 
         stage('Run Playwright Tests') {
             steps {
                 echo "🚀 Running Playwright tests..."
-                bat "\"C:\\Program Files\\nodejs\\npx.cmd\" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%"
+                bat "\"C:\\Program Files\\nodejs\\npx.cmd\" playwright test --reporter=list --reporter=html --reporter=allure-playwright --output=playwright-report-%REPORT_DATE%"
+                bat 'dir allure-results' // 👈 This checks if the folder was created
             }
         }
 
@@ -74,24 +74,7 @@ pipeline {
     }
 }
 
-        stage('Publish Allure Report') {
-    steps {
-        script {
-            echo "📊 Generating and Publishing Allure Report..."
-            if (fileExists('allure-results')) {
-                allure([
-                    commandline: 'allure',   // 👈 must match the Tool name
-                    includeProperties: false,
-                    jdk: '',
-                    results: [[path: 'allure-results']],
-                    reportBuildPolicy: 'ALWAYS'
-                ])
-            } else {
-                echo "⚠️ No allure-results found — skipping report publish."
-            }
-        }
-    }
-}
+        
 
         stage('Archive Artifacts') {
             steps {
