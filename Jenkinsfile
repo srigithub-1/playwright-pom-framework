@@ -60,20 +60,7 @@ pipeline {
             }
         }
 
-        stage('Publish HTML Report') {
-            steps {
-                echo "📊 Publishing Playwright HTML report..."
-                publishHTML(target: [
-                    reportDir: "playwright-report-${env.REPORT_DATE}",
-                    reportFiles: 'index.html',
-                    reportName: "Playwright Report - ${env.REPORT_DATE}",
-                    keepAll: true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: false
-                ])
-            }
-        }
-
+        
         stage('Publish HTML Report') {
     steps {
         echo "📊 Publishing Playwright HTML report..."
