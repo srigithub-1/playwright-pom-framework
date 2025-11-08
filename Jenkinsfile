@@ -74,24 +74,17 @@ pipeline {
             }
         }
 
-        stage('Publish Allure Report') {
+        stage('Publish HTML Report') {
     steps {
-        script {
-            echo "📊 Generating and Publishing Allure Report..."
-            if (fileExists('allure-results')) {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    allure([
-                        commandline: 'allure',
-                        includeProperties: false,
-                        jdk: '',
-                        results: [[path: 'allure-results']],
-                        reportBuildPolicy: 'ALWAYS'
-                    ])
-                }
-            } else {
-                echo "⚠️ No allure-results found — skipping report publish."
-            }
-        }
+        echo "📊 Publishing Playwright HTML report..."
+        publishHTML(target: [
+            reportDir: "playwright-report",
+            reportFiles: 'index.html',
+            reportName: "Playwright Test Report",
+            keepAll: true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: false
+        ])
     }
 }
 
