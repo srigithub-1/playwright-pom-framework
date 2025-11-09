@@ -1,16 +1,10 @@
 pipeline {
     agent any
 
-    options {
-        timeout(time: 25, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
-    }
-
     environment {
         NODE_HOME = "C:\\Program Files\\nodejs"
         SYS_PATH  = "C:\\Windows\\System32"
         PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
-        npm_config_cache = "C:\\Users\\USER\\AppData\\Local\\npm-cache"
         REPORT_DATE = powershell(script: '(Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")', returnStdout: true).trim()
     }
 
@@ -18,87 +12,59 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                echo "🧹 Cleaning old reports and node_modules..."
+                echo "🧹 Cleaning old results..."
+                bat 'if exist allure-results rmdir /s /q allure-results'
+                bat 'if exist allure-report rmdir /s /q allure-report'
                 bat 'for /d %%G in (playwright-report*) do rmdir /s /q "%%G"'
-                bat 'if exist test-results rmdir /s /q test-results'
-                bat 'if exist node_modules rmdir /s /q node_modules'
             }
         }
 
         stage('Checkout') {
             steps {
-                echo "📦 Checking out code from GitHub..."
+                echo "📦 Checking out project..."
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
-            options { timeout(time: 15, unit: 'MINUTES') }
             steps {
-                echo "📥 Installing npm packages..."
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
-            }
-        }
-
-        stage('Install Playwright Browsers') {
-            steps {
-                echo "🌐 Installing Playwright browsers..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
+                echo "📥 Installing dependencies..."
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --no-fund --no-audit --loglevel=error'
             }
         }
 
         stage('Run Playwright Tests') {
-            options { timeout(time: 10, unit: 'MINUTES') }
             steps {
-                echo "🚀 Running Playwright tests..."
-                bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%
-                exit /b 0
-                """
+                echo "🚀 Running Playwright tests (with Allure)..."
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html --reporter=allure-playwright'
             }
         }
 
-        stage('Package & Archive Playwright Report') {
+        stage('Generate Allure Report') {
             steps {
-                script {
-                    echo "📊 Locating latest Playwright report and packaging it..."
+                echo "📊 Generating Allure report..."
+                bat '"C:\\Users\\USER\\AppData\\Roaming\\npm\\allure.cmd" generate allure-results --clean -o allure-report'
+            }
+        }
 
-                    def reportFolder = bat(
-                        script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
-                        returnStdout: true
-                    ).trim()
-
-                    if (!reportFolder) {
-                        echo "⚠️ No Playwright report folder found. Skipping archive."
-                        return
-                    }
-
-                    echo "✅ Latest report folder: ${reportFolder}"
-
-                    bat """
-                    powershell -NoLogo -NoProfile -Command ^
-                      "Compress-Archive -Path '${reportFolder}\\*' -DestinationPath 'playwright-report-${env.REPORT_DATE}.zip' -Force"
-                    """
-
-                    archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}.zip, test-results/**, screenshots/**",
-                                     allowEmptyArchive: false
-
-                    echo "📦 Report archived: playwright-report-${env.REPORT_DATE}.zip"
-                }
+        stage('Archive Allure Report') {
+            steps {
+                echo "📦 Archiving Allure report..."
+                archiveArtifacts artifacts: 'allure-report/**', allowEmptyArchive: true
             }
         }
     }
 
     post {
         always {
-            echo "✅ Pipeline finished (success or failure)."
+            echo "✅ Pipeline finished."
             bat 'taskkill /IM node.exe /F || exit 0'
         }
         success {
-            echo "🎉 Playwright Tests Passed!"
+            echo "🎉 Tests Passed!"
         }
         failure {
-            echo "❌ Playwright Tests Failed!"
+            echo "❌ Tests Failed!"
         }
     }
 }
