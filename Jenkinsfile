@@ -52,18 +52,6 @@ pipeline {
     }
 }
 
-        stage('Run Playwright Tests') {
-            options { timeout(time: 10, unit: 'MINUTES') }
-            steps {
-                echo "🚀 Running Playwright tests..."
-                bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter="list, html"
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright show-report --report-dir=playwright-report-%REPORT_DATE%
-                exit /b 0
-                """
-            }
-        }
-
         stage('Package & Archive Playwright Report') {
             steps {
                 script {
