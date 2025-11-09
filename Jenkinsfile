@@ -45,11 +45,17 @@ pipeline {
     steps {
         echo "🚀 Running Playwright tests..."
         bat """
-        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html
-        rem ✅ Rename the generated report folder to include timestamp
-        if exist playwright-report (
-            ren playwright-report playwright-report-%REPORT_DATE%
-        )
+        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=json --output=test-results > results.json
+        if exist playwright-report ren playwright-report playwright-report-%REPORT_DATE%
+
+        rem 🧮 Extract test summary counts using PowerShell
+        powershell -NoLogo -NoProfile -Command ^
+          "$data = Get-Content results.json | ConvertFrom-Json; ^
+           $passed = ($data.suites.tests | ? { $_.outcome -eq 'expected' }).Count; ^
+           $failed = ($data.suites.tests | ? { $_.outcome -eq 'unexpected' }).Count; ^
+           $skipped = ($data.suites.tests | ? { $_.outcome -eq 'skipped' }).Count; ^
+           Write-Host ('✅ Passed: ' + $passed + ' ❌ Failed: ' + $failed + ' ⚠️ Skipped: ' + $skipped)"
+
         exit /b 0
         """
     }
