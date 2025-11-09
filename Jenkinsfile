@@ -52,7 +52,8 @@ pipeline {
             steps {
                 echo "🚀 Running Playwright tests..."
                 bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter="list, html"
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright show-report --report-dir=playwright-report-%REPORT_DATE%
                 exit /b 0
                 """
             }
