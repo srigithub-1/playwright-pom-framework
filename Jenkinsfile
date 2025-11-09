@@ -40,31 +40,23 @@ pipeline {
             }
         }
 
-       stage('Run Playwright Tests') {
-    options { timeout(time: 10, unit: 'MINUTES') }
-    steps {
-        echo "🚀 Running Playwright tests..."
-        bat """
-        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=json --output=test-results > results.json
-        if exist playwright-report ren playwright-report playwright-report-%REPORT_DATE%
+        stage('Install Playwright Browsers') {
+            steps {
+                echo "🌐 Installing Playwright browsers..."
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
+            }
+        }
 
-        rem 🧠 Write PowerShell script dynamically (avoids Groovy parsing issues)
-        (
-            echo ^$json = Get-Content results.json -Raw ^| ConvertFrom-Json
-            echo ^$tests = ^$json.suites ^| ForEach-Object { ^$_.specs } ^| Where-Object { ^$_ -ne ^$null } ^| Select-Object -ExpandProperty tests
-            echo ^$passed = (^$tests ^| Where-Object { ^$_.outcome -eq 'expected' }).Count
-            echo ^$failed = (^$tests ^| Where-Object { ^$_.outcome -eq 'unexpected' }).Count
-            echo ^$skipped = (^$tests ^| Where-Object { ^$_.outcome -eq 'skipped' }).Count
-            echo Write-Host ("✅ Passed: " ^+ ^$passed ^+ " ❌ Failed: " ^+ ^$failed ^+ " ⚠️ Skipped: " ^+ ^$skipped)
-        ) > summarize.ps1
-
-        powershell -ExecutionPolicy Bypass -File summarize.ps1
-        del summarize.ps1
-        exit /b 0
-        """
-    }
-}
-
+        stage('Run Playwright Tests') {
+            options { timeout(time: 10, unit: 'MINUTES') }
+            steps {
+                echo "🚀 Running Playwright tests..."
+                bat """
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%
+                exit /b 0
+                """
+            }
+        }
 
         stage('Package & Archive Playwright Report') {
             steps {
@@ -91,7 +83,7 @@ pipeline {
                     archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}.zip, test-results/**, screenshots/**",
                                      allowEmptyArchive: false
 
-                    echo "📥 Download from build artifacts: playwright-report-${env.REPORT_DATE}.zip"
+                    echo "📦 Report archived: playwright-report-${env.REPORT_DATE}.zip"
                 }
             }
         }
