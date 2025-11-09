@@ -48,18 +48,21 @@ pipeline {
         call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=json --output=test-results > results.json
         if exist playwright-report ren playwright-report playwright-report-%REPORT_DATE%
 
-        rem 🧮 Extract test summary counts using PowerShell
-        powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
-          "`$json = Get-Content results.json -Raw | ConvertFrom-Json; ^
-           `$tests = `$json.suites | ForEach-Object { `$_.specs } | Where-Object { `$_ -ne `$null } | Select-Object -ExpandProperty tests; ^
-           `$passed = (`$tests | Where-Object { `$_ .outcome -eq 'expected' }).Count; ^
-           `$failed = (`$tests | Where-Object { `$_ .outcome -eq 'unexpected' }).Count; ^
-           `$skipped = (`$tests | Where-Object { `$_ .outcome -eq 'skipped' }).Count; ^
-           Write-Host ('✅ Passed: ' + `$passed + ' ❌ Failed: ' + `$failed + ' ⚠️ Skipped: ' + `$skipped)"
+        rem 🧠 Write PowerShell script dynamically (avoids Groovy parsing issues)
+        echo $json = Get-Content results.json -Raw ^| ConvertFrom-Json > summarize.ps1
+        echo $tests = $json.suites ^| ForEach-Object { $_.specs } ^| Where-Object { $_ -ne $null } ^| Select-Object -ExpandProperty tests >> summarize.ps1
+        echo $passed = ($tests ^| Where-Object { $_.outcome -eq 'expected' }).Count >> summarize.ps1
+        echo $failed = ($tests ^| Where-Object { $_.outcome -eq 'unexpected' }).Count >> summarize.ps1
+        echo $skipped = ($tests ^| Where-Object { $_.outcome -eq 'skipped' }).Count >> summarize.ps1
+        echo Write-Host ('✅ Passed: ' + $passed + ' ❌ Failed: ' + $failed + ' ⚠️ Skipped: ' + $skipped) >> summarize.ps1
+
+        powershell -ExecutionPolicy Bypass -File summarize.ps1
+        del summarize.ps1
         exit /b 0
         """
     }
 }
+
 
 
         stage('Package & Archive Playwright Report') {
