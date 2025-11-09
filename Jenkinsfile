@@ -49,17 +49,18 @@ pipeline {
         if exist playwright-report ren playwright-report playwright-report-%REPORT_DATE%
 
         rem 🧮 Extract test summary counts using PowerShell
-        powershell -NoLogo -NoProfile -Command ^
-          "$data = Get-Content results.json | ConvertFrom-Json; ^
-           $passed = ($data.suites.tests | ? { $_.outcome -eq 'expected' }).Count; ^
-           $failed = ($data.suites.tests | ? { $_.outcome -eq 'unexpected' }).Count; ^
-           $skipped = ($data.suites.tests | ? { $_.outcome -eq 'skipped' }).Count; ^
+        powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command ^
+          "$json = Get-Content results.json -Raw | ConvertFrom-Json; ^
+           $tests = $json.suites | ForEach-Object { $_.specs } | Where-Object { $_ -ne $null } | Select-Object -ExpandProperty tests; ^
+           $passed = ($tests | Where-Object { $_.outcome -eq 'expected' }).Count; ^
+           $failed = ($tests | Where-Object { $_.outcome -eq 'unexpected' }).Count; ^
+           $skipped = ($tests | Where-Object { $_.outcome -eq 'skipped' }).Count; ^
            Write-Host ('✅ Passed: ' + $passed + ' ❌ Failed: ' + $failed + ' ⚠️ Skipped: ' + $skipped)"
-
         exit /b 0
         """
     }
 }
+
 
         stage('Package & Archive Playwright Report') {
             steps {
