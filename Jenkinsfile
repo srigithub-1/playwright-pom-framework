@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     options {
-         timeout(time: 25, unit: 'MINUTES')
-  buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
+        timeout(time: 25, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
     }
 
     environment {
@@ -59,49 +59,35 @@ pipeline {
         }
 
         stage('Package & Archive Playwright Report') {
-    steps {
-        script {
-            echo "📊 Locating latest Playwright report and packaging it..."
+            steps {
+                script {
+                    echo "📊 Locating latest Playwright report and packaging it..."
 
-            // 🔎 Find most recent report folder like: playwright-report-YYYY-MM-DD_HH-MM-SS
-            def reportFolder = bat(
-                script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
-                returnStdout: true
-            ).trim()
+                    def reportFolder = bat(
+                        script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
+                        returnStdout: true
+                    ).trim()
 
-            if (!reportFolder) {
-                echo "⚠️ No Playwright report folder found. Skipping archive."
-                return
+                    if (!reportFolder) {
+                        echo "⚠️ No Playwright report folder found. Skipping archive."
+                        return
+                    }
+
+                    echo "✅ Latest report folder: ${reportFolder}"
+
+                    bat """
+                    powershell -NoLogo -NoProfile -Command ^
+                      "Compress-Archive -Path '${reportFolder}\\*' -DestinationPath 'playwright-report-${env.REPORT_DATE}.zip' -Force"
+                    """
+
+                    archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}.zip, test-results/**, screenshots/**",
+                                     allowEmptyArchive: false
+
+                    echo "📥 Download from build artifacts: playwright-report-${env.REPORT_DATE}.zip"
+                }
             }
-
-            echo "✅ Latest report folder: ${reportFolder}"
-
-            // 🗂️ (Optional) still publish inline HTML for quick glance in Jenkins (may appear blank on some setups)
-            // publishHTML(target: [
-            //     reportDir: reportFolder,
-            //     reportFiles: 'index.html',
-            //     reportName: "Playwright Report - ${reportFolder}",
-            //     keepAll: true,
-            //     alwaysLinkToLastBuild: true,
-            //     allowMissing: false
-            // ])
-
-            // 🗜️ Zip the full report so it opens perfectly on your machine
-            // Powershell Compress-Archive needs a wildcard to include contents
-            bat """
-            powershell -NoLogo -NoProfile -Command ^
-              "Compress-Archive -Path '${reportFolder}\\*' -DestinationPath 'playwright-report-${env.REPORT_DATE}.zip' -Force"
-            """
-
-            // 📦 Archive the zip (and any test artifacts you want)
-            archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}.zip, test-results/**, screenshots/**",
-                             allowEmptyArchive: false
-
-            echo "📥 Download from build artifacts: playwright-report-${env.REPORT_DATE}.zip"
         }
     }
-}
-
 
     post {
         always {
