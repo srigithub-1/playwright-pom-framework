@@ -49,12 +49,14 @@ pipeline {
         if exist playwright-report ren playwright-report playwright-report-%REPORT_DATE%
 
         rem 🧠 Write PowerShell script dynamically (avoids Groovy parsing issues)
-        echo $json = Get-Content results.json -Raw ^| ConvertFrom-Json > summarize.ps1
-        echo $tests = $json.suites ^| ForEach-Object { $_.specs } ^| Where-Object { $_ -ne $null } ^| Select-Object -ExpandProperty tests >> summarize.ps1
-        echo $passed = ($tests ^| Where-Object { $_.outcome -eq 'expected' }).Count >> summarize.ps1
-        echo $failed = ($tests ^| Where-Object { $_.outcome -eq 'unexpected' }).Count >> summarize.ps1
-        echo $skipped = ($tests ^| Where-Object { $_.outcome -eq 'skipped' }).Count >> summarize.ps1
-        echo Write-Host ('✅ Passed: ' + $passed + ' ❌ Failed: ' + $failed + ' ⚠️ Skipped: ' + $skipped) >> summarize.ps1
+        (
+            echo ^$json = Get-Content results.json -Raw ^| ConvertFrom-Json
+            echo ^$tests = ^$json.suites ^| ForEach-Object { ^$_.specs } ^| Where-Object { ^$_ -ne ^$null } ^| Select-Object -ExpandProperty tests
+            echo ^$passed = (^$tests ^| Where-Object { ^$_.outcome -eq 'expected' }).Count
+            echo ^$failed = (^$tests ^| Where-Object { ^$_.outcome -eq 'unexpected' }).Count
+            echo ^$skipped = (^$tests ^| Where-Object { ^$_.outcome -eq 'skipped' }).Count
+            echo Write-Host ("✅ Passed: " ^+ ^$passed ^+ " ❌ Failed: " ^+ ^$failed ^+ " ⚠️ Skipped: " ^+ ^$skipped)
+        ) > summarize.ps1
 
         powershell -ExecutionPolicy Bypass -File summarize.ps1
         del summarize.ps1
@@ -62,7 +64,6 @@ pipeline {
         """
     }
 }
-
 
 
         stage('Package & Archive Playwright Report') {
