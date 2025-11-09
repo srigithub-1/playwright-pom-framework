@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     options {
-        // prevent long-running builds from hanging
         timeout(time: 25, unit: 'MINUTES')
     }
 
@@ -10,7 +9,7 @@ pipeline {
         NODE_HOME = "C:\\Program Files\\nodejs"
         SYS_PATH  = "C:\\Windows\\System32"
         PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
-        npm_config_cache = "C:\\Users\\USER\\AppData\\Local\\npm-cache"   // global npm cache
+        npm_config_cache = "C:\\Users\\USER\\AppData\\Local\\npm-cache"
         REPORT_DATE = powershell(script: '(Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")', returnStdout: true).trim()
     }
 
@@ -35,10 +34,8 @@ pipeline {
         stage('Install Dependencies') {
             options { timeout(time: 15, unit: 'MINUTES') }
             steps {
-                echo "📥 Installing npm packages (cached & reliable)..."
-                bat 'if exist node_modules rmdir /s /q node_modules'
+                echo "📥 Installing npm packages..."
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" list --depth=0'
             }
         }
 
@@ -54,30 +51,43 @@ pipeline {
             steps {
                 echo "🚀 Running Playwright tests..."
                 bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-${REPORT_DATE}
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-%REPORT_DATE%
                 exit /b 0
                 """
             }
         }
 
+        // ✅ Dynamically finds the latest Playwright report folder
         stage('Publish HTML Report') {
             steps {
-                echo "📊 Publishing Playwright HTML report..."
-                publishHTML(target: [
-                    reportDir: "playwright-report-${env.REPORT_DATE}",
-                    reportFiles: 'index.html',
-                    reportName: "Playwright Report - ${env.REPORT_DATE}",
-                    keepAll: true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: false
-                ])
+                script {
+                    echo "📊 Searching for the latest Playwright HTML report..."
+                    def reportFolder = bat(
+                        script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
+                        returnStdout: true
+                    ).trim()
+
+                    if (reportFolder) {
+                        echo "✅ Found report folder: ${reportFolder}"
+                        publishHTML(target: [
+                            reportDir: reportFolder,
+                            reportFiles: 'index.html',
+                            reportName: "Playwright Report - ${reportFolder}",
+                            keepAll: true,
+                            alwaysLinkToLastBuild: true,
+                            allowMissing: false
+                        ])
+                    } else {
+                        echo "⚠️ No Playwright report folder found!"
+                    }
+                }
             }
         }
 
         stage('Archive Artifacts') {
             steps {
                 echo "📦 Archiving reports and screenshots..."
-                archiveArtifacts artifacts: "playwright-report-${env.REPORT_DATE}/**, test-results/**, screenshots/**", allowEmptyArchive: true
+                archiveArtifacts artifacts: "playwright-report-*/**, test-results/**, screenshots/**", allowEmptyArchive: true
             }
         }
     }
