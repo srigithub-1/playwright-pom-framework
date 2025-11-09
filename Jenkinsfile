@@ -46,7 +46,10 @@ pipeline {
         echo "🚀 Running Playwright tests..."
         bat """
         call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html
-        call "C:\\Program Files\\nodejs\\npx.cmd" playwright show-report playwright-report-%REPORT_DATE%
+        rem ✅ Rename the generated report folder to include timestamp
+        if exist playwright-report (
+            ren playwright-report playwright-report-%REPORT_DATE%
+        )
         exit /b 0
         """
     }
