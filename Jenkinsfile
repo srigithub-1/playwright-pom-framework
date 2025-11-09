@@ -40,12 +40,17 @@ pipeline {
             }
         }
 
-        stage('Install Playwright Browsers') {
-            steps {
-                echo "🌐 Installing Playwright browsers..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
-            }
-        }
+       stage('Run Playwright Tests') {
+    options { timeout(time: 10, unit: 'MINUTES') }
+    steps {
+        echo "🚀 Running Playwright tests..."
+        bat """
+        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html
+        call "C:\\Program Files\\nodejs\\npx.cmd" playwright show-report playwright-report-%REPORT_DATE%
+        exit /b 0
+        """
+    }
+}
 
         stage('Run Playwright Tests') {
             options { timeout(time: 10, unit: 'MINUTES') }
