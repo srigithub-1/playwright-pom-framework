@@ -2,13 +2,15 @@ pipeline {
     agent any
 
     options {
-        timeout(time: 20, unit: 'MINUTES') // 🕒 avoid infinite hangs
+        // prevent long-running builds from hanging
+        timeout(time: 25, unit: 'MINUTES')
     }
 
     environment {
         NODE_HOME = "C:\\Program Files\\nodejs"
         SYS_PATH  = "C:\\Windows\\System32"
         PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
+        npm_config_cache = "C:\\Users\\USER\\AppData\\Local\\npm-cache"   // global npm cache
         REPORT_DATE = powershell(script: '(Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")', returnStdout: true).trim()
     }
 
@@ -20,7 +22,6 @@ pipeline {
                 bat 'for /d %%G in (playwright-report*) do rmdir /s /q "%%G"'
                 bat 'if exist test-results rmdir /s /q test-results'
                 bat 'if exist node_modules rmdir /s /q node_modules'
-                bat 'if exist allure-results rmdir /s /q allure-results'
             }
         }
 
@@ -32,12 +33,12 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-            options { timeout(time: 5, unit: 'MINUTES') }
+            options { timeout(time: 15, unit: 'MINUTES') }
             steps {
-                echo "📥 Installing npm packages..."
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" install --no-fund --no-audit --loglevel=error'
-                // 🧠 ensure allure-playwright exists
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" install allure-playwright --save-dev'
+                echo "📥 Installing npm packages (cached & reliable)..."
+                bat 'if exist node_modules rmdir /s /q node_modules'
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" list --depth=0'
             }
         }
 
@@ -53,38 +54,25 @@ pipeline {
             steps {
                 echo "🚀 Running Playwright tests..."
                 bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html --reporter=allure-playwright --output=playwright-report-%REPORT_DATE%
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=html --output=playwright-report-${REPORT_DATE}
                 exit /b 0
                 """
-                bat 'dir allure-results'
             }
         }
 
-        
-        stage('Publish Playwright HTML Report') {
-    steps {
-        script {
-            echo "📊 Searching for latest Playwright HTML report folder..."
-
-            // 🧠 Find the most recent report folder (e.g., playwright-report-2025-11-08_15-28-19)
-            def reportFolder = bat(
-                script: 'for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report*\') do @echo %%i & exit /b',
-                returnStdout: true
-            ).trim()
-
-            echo "✅ Latest report folder detected: ${reportFolder}"
-
-            publishHTML(target: [
-                reportDir: reportFolder,
-                reportFiles: 'index.html',
-                reportName: "Playwright Test Report",
-                keepAll: true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: false
-            ])
+        stage('Publish HTML Report') {
+            steps {
+                echo "📊 Publishing Playwright HTML report..."
+                publishHTML(target: [
+                    reportDir: "playwright-report-${env.REPORT_DATE}",
+                    reportFiles: 'index.html',
+                    reportName: "Playwright Report - ${env.REPORT_DATE}",
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
+                ])
+            }
         }
-    }
-}
 
         stage('Archive Artifacts') {
             steps {
@@ -97,7 +85,6 @@ pipeline {
     post {
         always {
             echo "✅ Pipeline finished (success or failure)."
-            // 🧹 Force-kill leftover Node/Playwright processes
             bat 'taskkill /IM node.exe /F || exit 0'
         }
         success {
