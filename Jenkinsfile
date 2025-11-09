@@ -59,30 +59,34 @@ pipeline {
 
         // ✅ Dynamically finds the latest Playwright report folder
         stage('Publish HTML Report') {
-            steps {
-                script {
-                    echo "📊 Searching for the latest Playwright HTML report..."
-                    def reportFolder = bat(
-                        script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
-                        returnStdout: true
-                    ).trim()
+    steps {
+        script {
+            echo "📊 Searching for the latest Playwright HTML report..."
+            def reportFolder = bat(
+                script: '@for /f "delims=" %%i in (\'dir /b /ad /o-d playwright-report-*\') do @echo %%i & goto :done\n:done',
+                returnStdout: true
+            ).trim()
 
-                    if (reportFolder) {
-                        echo "✅ Found report folder: ${reportFolder}"
-                        publishHTML(target: [
-                            reportDir: reportFolder,
-                            reportFiles: 'index.html',
-                            reportName: "Playwright Report - ${reportFolder}",
-                            keepAll: true,
-                            alwaysLinkToLastBuild: true,
-                            allowMissing: false
-                        ])
-                    } else {
-                        echo "⚠️ No Playwright report folder found!"
-                    }
-                }
+            if (reportFolder) {
+                echo "✅ Found report folder: ${reportFolder}"
+
+                // 🧠 Copy the entire folder to Jenkins workspace root (safe name)
+                bat "xcopy \"${reportFolder}\" \"playwright-latest-report\" /E /I /Y"
+
+                publishHTML(target: [
+                    reportDir: "playwright-latest-report",
+                    reportFiles: 'index.html',
+                    reportName: "Playwright Test Report",
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
+                ])
+            } else {
+                echo "⚠️ No Playwright report folder found!"
             }
         }
+    }
+}
 
         stage('Archive Artifacts') {
             steps {
