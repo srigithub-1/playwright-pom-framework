@@ -51,17 +51,18 @@ pipeline {
         }
 
         stage('Run Playwright Tests') {
-            options { timeout(time: 10, unit: 'MINUTES') }
-            steps {
-                echo "🚀 Running Playwright tests with Monocart Reporter..."
-                bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
-                exit /b 0
-                """
-                echo "🔎 Checking if Monocart report was generated..."
-                bat 'dir monocart-report'
-            }
-        }
+    options { timeout(time: 10, unit: 'MINUTES') }
+    steps {
+        echo "🚀 Running Playwright tests with Monocart Reporter..."
+        bat """
+        cd /d "%WORKSPACE%"
+        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
+        exit /b 0
+        """
+        echo "🔎 Checking if Monocart report was generated..."
+        bat 'dir monocart-report'
+    }
+}
 
         stage('Archive Monocart Report') {
             steps {
