@@ -56,6 +56,7 @@ pipeline {
         echo "🚀 Running Playwright tests with Monocart Reporter..."
         bat """
         cd /d "%WORKSPACE%"
+        set PLAYWRIGHT_JENKINS_REPORT_PATH=%WORKSPACE%\\monocart-report
         call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
         exit /b 0
         """
