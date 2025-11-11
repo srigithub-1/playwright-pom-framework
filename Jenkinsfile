@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo "📥 Installing npm packages..."
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
-                // Install Monocart reporter explicitly (safe for CI)
+                echo "📦 Ensuring Monocart Reporter is installed..."
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" install monocart-reporter --save-dev'
             }
         }
@@ -51,36 +51,36 @@ pipeline {
         }
 
         stage('Run Playwright Tests') {
-    options { timeout(time: 10, unit: 'MINUTES') }
-    steps {
-        echo "🚀 Running Playwright tests with Monocart Reporter..."
-        bat """
-        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
-        exit /b 0
-        """
-
-        echo "🔎 Checking if Monocart report was generated..."
-        bat 'dir monocart-report'
-    }
-}
-
-stage('Archive Monocart Report') {
-    steps {
-        script {
-            echo "📊 Packaging Monocart HTML report..."
-            if (fileExists('monocart-report')) {
+            options { timeout(time: 10, unit: 'MINUTES') }
+            steps {
+                echo "🚀 Running Playwright tests with Monocart Reporter..."
                 bat """
-                powershell -NoLogo -NoProfile -Command ^
-                  "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
+                exit /b 0
                 """
-                archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: false
-                echo "✅ Download the report zip from Jenkins → Artifacts section"
-            } else {
-                echo "⚠️ No Monocart report found — skipping archive step."
+                echo "🔎 Checking if Monocart report was generated..."
+                bat 'dir monocart-report'
+            }
+        }
+
+        stage('Archive Monocart Report') {
+            steps {
+                script {
+                    echo "📊 Packaging Monocart HTML report..."
+                    if (fileExists('monocart-report')) {
+                        bat """
+                        powershell -NoLogo -NoProfile -Command ^
+                          "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
+                        """
+                        archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: false
+                        echo "✅ Download the report zip from Jenkins → Artifacts section"
+                    } else {
+                        echo "⚠️ No Monocart report found — skipping archive step."
+                    }
+                }
             }
         }
     }
-}
 
     post {
         always {
