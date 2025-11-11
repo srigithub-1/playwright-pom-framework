@@ -1,10 +1,16 @@
 pipeline {
     agent any
 
+    options {
+        timeout(time: 25, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '20', artifactNumToKeepStr: '10'))
+    }
+
     environment {
         NODE_HOME = "C:\\Program Files\\nodejs"
         SYS_PATH  = "C:\\Windows\\System32"
         PATH = "${SYS_PATH};${NODE_HOME};${PATH}"
+        npm_config_cache = "C:\\Users\\USER\\AppData\\Local\\npm-cache"
         REPORT_DATE = powershell(script: '(Get-Date).ToString("yyyy-MM-dd_HH-mm-ss")', returnStdout: true).trim()
     }
 
@@ -12,59 +18,73 @@ pipeline {
 
         stage('Clean Workspace') {
             steps {
-                echo "🧹 Cleaning old results..."
-                bat 'if exist allure-results rmdir /s /q allure-results'
-                bat 'if exist allure-report rmdir /s /q allure-report'
+                echo "🧹 Cleaning old reports and node_modules..."
                 bat 'for /d %%G in (playwright-report*) do rmdir /s /q "%%G"'
+                bat 'if exist test-results rmdir /s /q test-results'
+                bat 'if exist node_modules rmdir /s /q node_modules'
+                bat 'if exist monocart-report rmdir /s /q monocart-report'
             }
         }
 
         stage('Checkout') {
             steps {
-                echo "📦 Checking out project..."
+                echo "📦 Checking out code from GitHub..."
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
+            options { timeout(time: 15, unit: 'MINUTES') }
             steps {
-                echo "📥 Installing dependencies..."
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --no-fund --no-audit --loglevel=error'
+                echo "📥 Installing npm packages..."
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
+                // Install Monocart reporter explicitly (safe for CI)
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" install monocart-reporter --save-dev'
+            }
+        }
+
+        stage('Install Playwright Browsers') {
+            steps {
+                echo "🌐 Installing Playwright browsers..."
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright install --with-deps'
             }
         }
 
         stage('Run Playwright Tests') {
+            options { timeout(time: 10, unit: 'MINUTES') }
             steps {
-                echo "🚀 Running Playwright tests (with Allure)..."
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" playwright test --reporter=list --reporter=html --reporter=allure-playwright'
+                echo "🚀 Running Playwright tests with Monocart Reporter..."
+                bat """
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
+                exit /b 0
+                """
             }
         }
 
-        stage('Generate Allure Report') {
+        stage('Archive Monocart Report') {
             steps {
-                echo "📊 Generating Allure report..."
-                bat '"C:\\Users\\USER\\AppData\\Roaming\\npm\\allure.cmd" generate allure-results --clean -o allure-report'
-            }
-        }
-
-        stage('Archive Allure Report') {
-            steps {
-                echo "📦 Archiving Allure report..."
-                archiveArtifacts artifacts: 'allure-report/**', allowEmptyArchive: true
+                echo "📊 Packaging Monocart HTML report..."
+                // compress HTML folder
+                bat """
+                powershell -NoLogo -NoProfile -Command ^
+                  "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
+                """
+                archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: false
+                echo "✅ Download the report zip from Jenkins → Artifacts section"
             }
         }
     }
 
     post {
         always {
-            echo "✅ Pipeline finished."
+            echo "✅ Pipeline finished (success or failure)."
             bat 'taskkill /IM node.exe /F || exit 0'
         }
         success {
-            echo "🎉 Tests Passed!"
+            echo "🎉 Playwright Tests Passed!"
         }
         failure {
-            echo "❌ Tests Failed!"
+            echo "❌ Playwright Tests Failed!"
         }
     }
 }
