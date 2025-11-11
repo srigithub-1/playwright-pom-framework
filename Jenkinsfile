@@ -19,10 +19,8 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 echo "🧹 Cleaning old reports and node_modules..."
-                bat 'for /d %%G in (playwright-report*) do rmdir /s /q "%%G"'
-                bat 'if exist test-results rmdir /s /q test-results'
+                bat 'for /d %%G in (monocart-report*) do rmdir /s /q "%%G"'
                 bat 'if exist node_modules rmdir /s /q node_modules'
-                bat 'if exist monocart-report rmdir /s /q monocart-report'
             }
         }
 
@@ -34,12 +32,10 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-            options { timeout(time: 15, unit: 'MINUTES') }
+            options { timeout(time: 10, unit: 'MINUTES') }
             steps {
                 echo "📥 Installing npm packages..."
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" ci --prefer-offline --no-audit --no-fund --loglevel=error'
-                echo "📦 Ensuring Monocart Reporter is installed..."
-                bat '"C:\\Program Files\\nodejs\\npm.cmd" install monocart-reporter --save-dev'
             }
         }
 
@@ -51,35 +47,41 @@ pipeline {
         }
 
         stage('Run Playwright Tests') {
-    options { timeout(time: 10, unit: 'MINUTES') }
-    steps {
-        echo "🚀 Running Playwright tests with Monocart Reporter..."
-        bat """
-        cd /d "%WORKSPACE%"
-        set PLAYWRIGHT_JENKINS_REPORT_PATH=%WORKSPACE%\\monocart-report
-        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
-        exit /b 0
-        """
-        echo "🔎 Checking if Monocart report was generated..."
-        bat 'dir monocart-report'
-    }
-}
+            options { timeout(time: 10, unit: 'MINUTES') }
+            steps {
+                echo "🚀 Running Playwright tests with Monocart Reporter..."
+                bat """
+                cd /d "%WORKSPACE%"
+                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
+                exit /b 0
+                """
+                echo "🔎 Checking if Monocart report was generated..."
+                bat 'dir monocart-report'
+            }
+        }
+
+        stage('Publish HTML Report') {
+            steps {
+                echo "📊 Publishing Monocart Report..."
+                publishHTML(target: [
+                    reportDir: 'monocart-report',
+                    reportFiles: 'index.html',
+                    reportName: "Monocart Test Dashboard",
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
+                ])
+            }
+        }
 
         stage('Archive Monocart Report') {
             steps {
-                script {
-                    echo "📊 Packaging Monocart HTML report..."
-                    if (fileExists('monocart-report')) {
-                        bat """
-                        powershell -NoLogo -NoProfile -Command ^
-                          "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
-                        """
-                        archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: false
-                        echo "✅ Download the report zip from Jenkins → Artifacts section"
-                    } else {
-                        echo "⚠️ No Monocart report found — skipping archive step."
-                    }
-                }
+                echo "🗜️ Zipping Monocart report for download..."
+                bat """
+                powershell -NoLogo -NoProfile -Command ^
+                  "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
+                """
+                archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: true
             }
         }
     }
