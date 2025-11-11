@@ -51,29 +51,36 @@ pipeline {
         }
 
         stage('Run Playwright Tests') {
-            options { timeout(time: 10, unit: 'MINUTES') }
-            steps {
-                echo "🚀 Running Playwright tests with Monocart Reporter..."
-                bat """
-                call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
-                exit /b 0
-                """
-            }
-        }
+    options { timeout(time: 10, unit: 'MINUTES') }
+    steps {
+        echo "🚀 Running Playwright tests with Monocart Reporter..."
+        bat """
+        call "C:\\Program Files\\nodejs\\npx.cmd" playwright test
+        exit /b 0
+        """
 
-        stage('Archive Monocart Report') {
-            steps {
-                echo "📊 Packaging Monocart HTML report..."
-                // compress HTML folder
+        echo "🔎 Checking if Monocart report was generated..."
+        bat 'dir monocart-report'
+    }
+}
+
+stage('Archive Monocart Report') {
+    steps {
+        script {
+            echo "📊 Packaging Monocart HTML report..."
+            if (fileExists('monocart-report')) {
                 bat """
                 powershell -NoLogo -NoProfile -Command ^
                   "Compress-Archive -Path 'monocart-report\\*' -DestinationPath 'monocart-report-${env.REPORT_DATE}.zip' -Force"
                 """
                 archiveArtifacts artifacts: "monocart-report-${env.REPORT_DATE}.zip", allowEmptyArchive: false
                 echo "✅ Download the report zip from Jenkins → Artifacts section"
+            } else {
+                echo "⚠️ No Monocart report found — skipping archive step."
             }
         }
     }
+}
 
     post {
         always {
