@@ -3,9 +3,6 @@ pipeline {
 
     stages {
 
-        /* ---------------------------------------------------
-         * 0. CLEAN WORKSPACE
-         * ---------------------------------------------------*/
         stage('Clean Workspace') {
             steps {
                 echo "🧹 Cleaning Jenkins workspace..."
@@ -13,9 +10,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 1. CHECKOUT FULL GITHUB REPOSITORY
-         * ---------------------------------------------------*/
         stage('Checkout Full Repo') {
             steps {
                 echo "📥 Checking out latest repository code..."
@@ -23,9 +17,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 2. DEBUG: SHOW FILES + CONFIG
-         * ---------------------------------------------------*/
         stage('Debug Workspace') {
             steps {
                 echo "📁 Listing workspace files:"
@@ -36,9 +27,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 3. INSTALL NPM DEPENDENCIES
-         * ---------------------------------------------------*/
         stage('Install Dependencies') {
             steps {
                 echo "📦 Running npm ci..."
@@ -46,9 +34,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 4. RUN PLAYWRIGHT TESTS
-         * ---------------------------------------------------*/
         stage('Run Playwright Tests') {
             steps {
                 echo "🚀 Running Playwright tests..."
@@ -56,9 +41,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 5. ARCHIVE REPORT FOLDERS
-         * ---------------------------------------------------*/
         stage('Archive Reports') {
             steps {
                 echo "📁 Archiving reports if available..."
@@ -84,9 +66,6 @@ pipeline {
             }
         }
 
-        /* ---------------------------------------------------
-         * 6. PUBLISH PLAYWRIGHT HTML REPORT
-         * ---------------------------------------------------*/
         stage('Publish Playwright HTML Report') {
             when { expression { fileExists('reports/html-report/index.html') } }
             steps {
@@ -96,14 +75,12 @@ pipeline {
                     reportDir: 'reports/html-report',
                     reportFiles: 'index.html',
                     keepAll: true,
-                    alwaysLinkToLastBuild: true
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
                 ])
             }
         }
 
-        /* ---------------------------------------------------
-         * 7. PUBLISH MONOCART DASHBOARD
-         * ---------------------------------------------------*/
         stage('Publish Monocart Dashboard') {
             when { expression { fileExists('reports/monocart-report/index.html') } }
             steps {
@@ -113,7 +90,8 @@ pipeline {
                     reportDir: 'reports/monocart-report',
                     reportFiles: 'index.html',
                     keepAll: true,
-                    alwaysLinkToLastBuild: true
+                    alwaysLinkToLastBuild: true,
+                    allowMissing: false
                 ])
             }
         }
