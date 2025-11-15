@@ -3,76 +3,99 @@ pipeline {
 
     stages {
 
+        stage('Debug Workspace') {
+            steps {
+                echo "WORKSPACE: ${env.WORKSPACE}"
+                bat "dir"
+                echo "Checking PlaywrightAutomation folder:"
+                dir('PlaywrightAutomation') {
+                    bat "dir"
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
-                echo "📦 Installing NPM packages..."
-                bat 'npm ci'
+                dir('PlaywrightAutomation') {
+                    echo "📦 Installing npm packages..."
+                    bat 'npm ci'
+                }
             }
         }
 
         stage('Run Playwright Tests') {
             steps {
-                echo "🚀 Running tests..."
-                bat 'npx playwright test'
+                dir('PlaywrightAutomation') {
+                    echo "🚀 Running Playwright tests..."
+                    bat 'npx playwright test'
+                }
             }
         }
 
         stage('Archive Reports') {
             steps {
-                echo "📁 Archiving Reports..."
+                dir('PlaywrightAutomation') {
+                    echo "📁 Archiving report folders..."
 
-                // Archive all reports (if folder exists)
-                script {
-                    def reportFolders = [
-                        'reports/html-report',
-                        'reports/monocart-report',
-                        'reports/playwright',
-                        'reports/allure',
-                        'reports/raw'
-                    ]
+                    script {
+                        def reportFolders = [
+                            'reports/html-report',
+                            'reports/monocart-report',
+                            'reports/playwright',
+                            'reports/allure',
+                            'reports/raw'
+                        ]
 
-                    reportFolders.each { folder ->
-                        if (fileExists(folder)) {
-                            archiveArtifacts artifacts: "${folder}/**", fingerprint: true
-                        } else {
-                            echo "⚠️ Folder not found: ${folder} (skipped)"
+                        reportFolders.each { folder ->
+                            if (fileExists(folder)) {
+                                echo "📌 Archiving: ${folder}"
+                                archiveArtifacts artifacts: "${folder}/**", fingerprint: true
+                            } else {
+                                echo "⚠️ Folder not found, skipping: ${folder}"
+                            }
                         }
                     }
                 }
             }
         }
 
-        stage('Publish HTML Report') {
-            when {
-                expression { fileExists('reports/html-report/index.html') }
-            }
+        stage('Publish Playwright HTML Report') {
             steps {
-                echo "📄 Publishing Playwright HTML report..."
-                publishHTML(target: [
-                    reportDir: 'reports/html-report',
-                    reportFiles: 'index.html',
-                    reportName: 'Playwright HTML Report',
-                    keepAll: true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: false
-                ])
+                dir('PlaywrightAutomation') {
+                    script {
+                        if (fileExists('reports/html-report/index.html')) {
+                            publishHTML(target: [
+                                reportName:  'Playwright HTML Report',
+                                reportDir:   'reports/html-report',
+                                reportFiles: 'index.html',
+                                keepAll:     true,
+                                alwaysLinkToLastBuild: true
+                            ])
+                        } else {
+                            echo "⚠️ Playwright HTML Report missing, skipping publish."
+                        }
+                    }
+                }
             }
         }
 
-        stage('Publish Monocart Report') {
-            when {
-                expression { fileExists('reports/monocart-report/index.html') }
-            }
+        stage('Publish Monocart Dashboard') {
             steps {
-                echo "📊 Publishing Monocart Dashboard..."
-                publishHTML(target: [
-                    reportDir: 'reports/monocart-report',
-                    reportFiles: 'index.html',
-                    reportName: 'Monocart Dashboard',
-                    keepAll: true,
-                    alwaysLinkToLastBuild: true,
-                    allowMissing: false
-                ])
+                dir('PlaywrightAutomation') {
+                    script {
+                        if (fileExists('reports/monocart-report/index.html')) {
+                            publishHTML(target: [
+                                reportName:  'Monocart Dashboard',
+                                reportDir:   'reports/monocart-report',
+                                reportFiles: 'index.html',
+                                keepAll:     true,
+                                alwaysLinkToLastBuild: true
+                            ])
+                        } else {
+                            echo "⚠️ Monocart report not found, skipping publish."
+                        }
+                    }
+                }
             }
         }
     }
