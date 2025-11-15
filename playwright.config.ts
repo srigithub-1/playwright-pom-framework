@@ -3,10 +3,13 @@ import path from 'path';
 
 // Jenkins workspace support
 const workspace = process.env.WORKSPACE || process.cwd();
-const monocartReportPath = path.join(workspace, 'reports', 'monocart-report');
-const htmlReportPath = path.join(workspace, 'reports', 'html-report');
-const rawReportPath = path.join(workspace, 'reports', 'raw');
-const playwrightJsonPath = path.join(workspace, 'reports', 'playwright');
+
+// STEP 2 + 4: All report folders consolidated under ./reports/
+const htmlReportPath      = path.join(workspace, 'reports', 'html-report');
+const playwrightReportPath = path.join(workspace, 'reports', 'playwright');
+const allureReportPath     = path.join(workspace, 'reports', 'allure');
+const monocartReportPath   = path.join(workspace, 'reports', 'monocart-report');
+const rawResultsPath       = path.join(workspace, 'reports', 'raw');   // Step 5
 
 export default defineConfig({
   // ----------------------------
