@@ -14,6 +14,17 @@ pipeline {
             }
         }
 
+        stage('Debug Files') {
+    steps {
+        dir('PlaywrightAutomation') {
+            echo "🔎 Listing files in PlaywrightAutomation:"
+            bat "dir /b"
+            echo "🔎 Listing tests folder:"
+            bat "dir tests /s /b"
+        }
+    }
+}
+
         stage('Install Dependencies') {
             steps {
                 dir('PlaywrightAutomation') {
