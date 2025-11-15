@@ -1,69 +1,81 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
-// Force reports to Jenkins workspace folder if it exists
+// Jenkins workspace support
 const workspace = process.env.WORKSPACE || process.cwd();
-const reportPath = path.join(workspace, 'monocart-report');
+const monocartReportPath = path.join(workspace, 'reports', 'monocart-report');
+const htmlReportPath = path.join(workspace, 'reports', 'html-report');
+const rawReportPath = path.join(workspace, 'reports', 'raw');
+const playwrightJsonPath = path.join(workspace, 'reports', 'playwright');
 
 export default defineConfig({
+  // ----------------------------
+  // Test discovery
+  // ----------------------------
   testDir: './tests',
-  timeout: 30 * 1000, // 30 seconds per test
-  expect: {
-    timeout: 5000, // 5 seconds for assertions
-  },
+  timeout: 30 * 1000,
 
-  // ✅ Built-in reporters only
+  expect: { timeout: 5000 },
+
+  // ----------------------------
+  // STEP 5: Raw artifacts go here
+  // ----------------------------
+  outputDir: rawResultsPath,
+
+  // ----------------------------
+  // Reporters
+  // ----------------------------
   reporter: [
     ['list'],
+
+    // ⭐ Default Playwright HTML report
+    ['html', {
+      outputFolder: htmlReportPath,
+      open: 'never'                      // Jenkins-safe
+    }],
+
+    // ⭐ Required: Playwright's trace/attachments viewer
+    ['json', { outputFile: path.join(playwrightReportPath, 'report.json') }],
+
+    // ⭐ Allure (optional — enable if you want)
+    // ['allure-playwright', { outputFolder: allureReportPath }],
+
+    // ⭐ Your existing Monocart reporter
     ['monocart-reporter', {
-      outputFile: path.join(reportPath, 'index.html'),
+      outputFile: path.join(monocartReportPath, 'index.html'),
       reportTitle: 'Playwright Test Dashboard',
       autoOpen: false,
       trend: true,
       removeExisting: true
     }]
   ],
-  // ✅ Parallel execution
+
+  // ----------------------------
+  // Parallelism
+  // ----------------------------
   fullyParallel: true,
-
-  // ✅ Fail build if test.only accidentally left in code
   forbidOnly: !!process.env.CI,
-
-  // ✅ Retry failed tests once (optional)
   retries: 1,
-
-  // ✅ CI runs can use limited workers
   workers: process.env.CI ? 1 : undefined,
 
-  // ✅ Common settings for all tests
+  // ----------------------------
+  // Browser launch defaults
+  // ----------------------------
   use: {
     headless: true,
     baseURL: 'https://playwright.dev',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    trace: 'on-first-retry',
+    trace: 'on-first-retry'
   },
 
-  // ✅ Configure projects for multiple browsers
+  // ----------------------------
+  // Projects (browsers)
+  // ----------------------------
   projects: [
     {
       name: 'Chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'] }
     }
-    /* {
-      name: 'Firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'WebKit',
-      use: { ...devices['Desktop Safari'] },
-    }, */
-  ],
-
-  // ✅ Optional local server before running tests
-  // webServer: {
-  //   command: 'npm run start',
-  //   port: 3000,
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  ]
 });
