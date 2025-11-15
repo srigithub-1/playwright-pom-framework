@@ -7,7 +7,8 @@
     "@types/node": "^24.9.2",
     "allure-commandline": "^2.34.1",
     "allure-playwright": "^3.4.2",
-    "appium-uiautomator2-driver": "^2.2.0"
+    "appium-uiautomator2-driver": "^2.2.0",
+    "monocart-reporter": "^2.9.23"
   },
   "scripts": {}
 }
